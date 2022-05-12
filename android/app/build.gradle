@@ -125,6 +125,10 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
+    packagingOptions {
+        pickFirst '**/*.so'
+    }
+
     defaultConfig {
         applicationId "com.reactnativepytorchlive"
         minSdkVersion rootProject.ext.minSdkVersion
