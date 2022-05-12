@@ -1,112 +1,73 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
+import * as React from 'react';
+import { Text, StyleSheet, View } from 'react-native';
+import { Camera, Image, MobileModel } from 'react-native-pytorch-core';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
-import React from 'react';
-import type {Node} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const model = require('./models/mobilenet_v3_small.ptl');
+const ImageClasses = require('./models/MobileNetV3Classes.json');
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+export default function App() {
+  // Component state that holds the detected object class
+  const [objectClass, setObjectClass] = React.useState('');
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
+  async function handleImage(image) {
+    const { result } = await MobileModel.execute(
+      model,
+      {
+        image,
+      },
+    );
+
+    if (result.confidence > 0.3) {
+      // Get max index (argmax) result to resolve the top class name
+      const topClass = ImageClasses[result.maxIdx];
+
+      // Set object class state to be the top class detected in the image
+      setObjectClass(topClass);
+    } else {
+      // Reset the object class if confidence value is low
+      setObjectClass('');
+    }
+
+    // It is important to release the image to avoid memory leaks
+    image.release();
+  }
+
+  React.useEffect(() => {
+    check(PERMISSIONS.ANDROID.CAMERA).then((result) => {
+      if (result !== RESULTS.GRANTED) {
+        request(PERMISSIONS.ANDROID.CAMERA)
+      }
+    })
+  }, [])
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View
+      style={[
+        styles.container,
+      ]}>
+      <Text style={styles.label}>Object: {objectClass}</Text>
+      <Camera
+        style={styles.camera}
+        onFrame={handleImage}
+        hideCaptureButton={true}
+      />
     </View>
   );
-};
-
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+}
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    flexGrow: 1,
+    padding: 20,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  label: {
+    marginBottom: 10,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  camera: {
+    flexGrow: 1,
+    width: '100%',
   },
 });
-
-export default App;
